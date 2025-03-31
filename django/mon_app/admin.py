@@ -83,7 +83,7 @@ class MatchAdmin(ImportExportModelAdmin, admin.ModelAdmin):
     ]
     list_filter = ['created', 'shop_competitor', 'status']
     search_fields = ['name_my', 'id_product']
-    change_list_template = "mon_app/button.html"
+    #change_list_template = "mon_app/button.html"
 
     def get_urls(self):
         urls = super().get_urls()
