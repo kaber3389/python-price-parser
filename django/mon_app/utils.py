@@ -1,4 +1,6 @@
 from django.contrib import messages
+from django.db.models import Q
+from unicodedata import decimal
 
 from .models import CompetitorProduct, Match, MyProduct
 
@@ -21,6 +23,7 @@ def status_false_util(modeladmin, request, queryset):
     modeladmin.message_user(request, f"{message_bit} successfully marked as False.")
 
 
+#Сравнение товаров конкурента со своими товарами
 def start_matching_competitor_util(modeladmin, request, queryset):
     products_competitor = queryset.values('id_product', 'name', 'price', 'shop', 'url')
 
@@ -31,9 +34,20 @@ def start_matching_competitor_util(modeladmin, request, queryset):
         price_competitor = product_competitor.get('price')
         url_competitor = product_competitor.get('url')
 
-        product_my = MyProduct.objects.filter(id_product=id_product_competitor).values(
+        search_query = name_competitor
+        keywords = [word.strip('",.') for word in search_query.split() if len(word) > 2]
+        from django.db.models import Q
+        query = Q()
+        for keyword in keywords:
+            query |= Q(name__icontains=keyword)
+
+        product_my = MyProduct.objects.filter(query).values(
             'id_product', 'name', 'price'
-        )[0]
+        ).first()
+
+        if not product_my:
+            continue
+
         id_product_my = product_my.get('id_product')
         name_my = product_my.get('name')
         price_my = product_my.get('price')
@@ -45,7 +59,7 @@ def start_matching_competitor_util(modeladmin, request, queryset):
             status = False
 
         Match.objects.update_or_create(
-            id_product=id_product_competitor,
+            id_product_competitor=id_product_competitor,
             defaults={
                 'id_product': id_product_my,
                 'name_my': name_my,
@@ -69,27 +83,28 @@ def start_matching_my_util(modeladmin, request, queryset):
         name_my = product_my.get('name')
         price_my = product_my.get('price')
 
-        product_competitor = CompetitorProduct.objects.filter(id_product=id_product_my).values(
-            'shop', 'id_product', 'name', 'price'
-        )[0]
-        shop_competitor = product_competitor.get('shop')
-        id_product_competitor = product_competitor.get('id_product')
-        name_competitor = product_competitor.get('name')
-        price_competitor = product_competitor.get('price')
+        search_query = name_my
+        keywords = [word.strip('",.') for word in search_query.split() if len(word) > 2]
+        from django.db.models import Q
+        query = Q()
+        for keyword in keywords:
+            query |= Q(name__icontains=keyword)
+        product_competitor = CompetitorProduct.objects.filter(query).first()  # Объект модели
+
+        if not product_competitor:
+            continue
+        shop_competitor = product_competitor.shop
+        id_product_competitor = product_competitor.id_product
+        name_competitor = product_competitor.name
+        price_competitor = product_competitor.price
 
         diff = price_my - price_competitor
-
-        if diff < 0:
-            status = True
-        elif diff > 0:
-            status = False
-        else:
-            status = None
+        status = True if diff < 0 else False if diff > 0 else None
 
         Match.objects.update_or_create(
             id_product=id_product_my,
+            id_product_competitor=id_product_competitor,
             defaults={
-                'id_product': id_product_competitor,
                 'name_my': name_my,
                 'price_my': price_my,
                 'shop_competitor': shop_competitor,
@@ -100,7 +115,6 @@ def start_matching_my_util(modeladmin, request, queryset):
             }
         )
     modeladmin.message_user(request, "Объекты сравнены")
-
 
 def analyze_util(modeladmin, request, queryset):
     count = queryset.count()
@@ -119,14 +133,14 @@ def analyze_util(modeladmin, request, queryset):
     avg_my = sum_price_my / count
 
     if avg_my < avg_competitor:
-        percent_diff = 100 - (avg_my / avg_competitor * 100)
+        percent_diff = round(100 - (avg_my / avg_competitor * 100), 2)
         messages.info(
             request,
             f"Средняя цена у конкурента: {avg_competitor}, средняя цена у меня: {avg_my}. "
             f"Мои товары на {percent_diff} процентов дешевле."
         )
     else:
-        percent_diff = 100 - (avg_competitor / avg_my * 100)
+        percent_diff = round(100 - (avg_competitor / avg_my * 100), 2)
         messages.error(
             request,
             f"Средняя цена у конкурента: {avg_competitor}, средняя цена у меня: {avg_my}. "

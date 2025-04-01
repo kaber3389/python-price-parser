@@ -1,20 +1,32 @@
-import os
-import requests
 from decimal import Decimal
 
 from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
 from mon_app.models import CompetitorProduct
 
 
 def get_html(url):
-    user_agent = (
-        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 '
-        '(KHTML, like Gecko) Chrome/72.0.3626.81 Safari/537.36'
+    options = Options()
+    options.add_argument("--headless")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--window-size=1920x1080")
+    options.add_argument(
+        "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+
+    driver = webdriver.Chrome(options=options)
+    driver.get(url)
+    WebDriverWait(driver, 5).until(
+        EC.presence_of_element_located((By.CLASS_NAME, "product-card-list"))
     )
-    r = requests.get(url, headers={'User-Agent': user_agent})
-    if r.ok:
-        return r.text
-    print(r.status_code)
+    html = driver.page_source
+    driver.quit()
+    return html
 
 
 def refined(s):
@@ -25,16 +37,17 @@ def refined(s):
 def get_page_data(html):
     data_list = []
     soup = BeautifulSoup(html, 'lxml')
+    articles = soup.find_all('article', class_='product-card')
 
-    divs = soup.find_all('div', class_='dtList')
-    for div in divs:
-        id_product = div.find('div', class_='l_class').get('id').replace('c', '')
-        name = div.find('div', class_='dtlist-inner-brand-name').find('span', class_='goods-name').text.strip()
-        price = div.find('span', class_='price').text.strip().split('.')[0].replace(' руб', '').replace(' ', '')
-        categoryId = soup.find('div', class_='catalog-content').get('data-menu-id')
-        categoryName = soup.find('div', class_='breadcrumbs').find_all('span')[-1].text.strip()
-        url = div.find('a', class_='ref_goods_n_p').get('href')
-        vendorName = div.find('div', class_='dtlist-inner-brand-name').find('strong').text.strip().replace(' /', '')
+    for article in articles:
+        id_product = article.get('data-nm-id')
+        name = article.find('a', class_='product-card__link').get('aria-label')
+        price_string = article.find('ins', class_='price__lower-price').text.strip()
+        price = ''.join(filter(str.isdigit, price_string))
+        categoryId = article.get('id').replace('c', '')
+        categoryName = article.get('data-nm-id')
+        url = article.find('a', class_='product-card__link').get('href')
+        vendorName = article.find('span', class_='product-card__brand').text.strip()
         shop = 'Wildberries'
 
         data = {
@@ -43,11 +56,10 @@ def get_page_data(html):
             'price': price,
             'categoryId': categoryId,
             'categoryName': categoryName,
-            'vendorName': vendorName.lower().title(),
+            'vendorName': vendorName,
             'url': url,
             'shop': shop,
         }
-        print(data)
         data_list.append(data)
     return data_list
 
@@ -92,6 +104,7 @@ def write_db(competitor_products):
 
 def wildberries(url_target, page_count):
     pattern = url_target + '?page={}'
+    product_count_on_page = 0
     for i in range(1, int(page_count) + 1):
         url = pattern.format(str(i))
         html = get_html(url)

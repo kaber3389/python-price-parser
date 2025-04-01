@@ -1,1 +1,78 @@
-<h1>Главная</h1>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Парсинг</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        form {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        label {
+            display: block;
+            margin: 10px 0 5px;
+            color: #555;
+        }
+        input[type="text"],
+        input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <h1>Введите данные для парсинга</h1>
+    <form method="post" action="{% url 'parsing_url' %}" id="parsingForm">
+        {% csrf_token %}
+        <label for="url_target">URL:</label>
+        <input type="text" id="url_target" name="url_target" required><br>
+        <label for="page_count" style="display: none;">Количество страниц:</label>
+        <input type="number" id="page_count" name="page_count" value="1" style="display: none;" required><br>
+        <button type="submit" id="submitButton">Запустить парсинг</button>
+    </form>
+
+    <script>
+        document.getElementById('parsingForm').addEventListener('submit', function(e) {
+            const submitButton = document.getElementById('submitButton');
+            submitButton.disabled = true;
+            submitButton.textContent = 'Идет парсинг, ожидайте...';
+
+            fetch(...).then(() => { submitButton.disabled = false; submitButton.textContent = 'Запустить парсинг'; })
+        });
+    </script>
+</body>
+</html>

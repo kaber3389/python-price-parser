@@ -27,22 +27,26 @@ def get_html(url):
 def get_page_data(html):
     data_list = []
     soup = BeautifulSoup(html, 'lxml')
-    divs = soup.find_all('div', class_='subcategory-product-item')
+    #divs = soup.find_all('div', class_='subcategory-product-item')
+    script_tag = soup.find('script', id='__NEXT_DATA__')
+    # Извлекаем содержимое тега как строку
+    script_content = script_tag.string
+    # Парсим JSON в Python-объект
+    data = json.loads(script_content)
+    # Получаем нужные данные по пути
+    products = data['props']['initialState']['subcategory']['productsFilter']['payload']['productsFilter']['products']
 
-    for div in divs:
-        json_product = div.get('data-params')
-        url = div.find('a', class_='link_gtm-js link_pageevents-js ddl_product_link').get('href')
-        data = json.loads(json_product)
-
-        id_product = data.get('id')
-        categoryId = data['categoryId']
-        price = data['price']
-        name = data['shortName']
-        categoryName = data['categoryName']
-        vendorName = data['brandName']
+    for product in products:
+        id_product = product['id']
+        categoryId = product['category']['id']
+        price = product['price']['price']
+        name = product['shortName']
+        categoryName = product['category']['name']
+        vendorName = product['brand']['name']
+        url = 'https://www.citilink.ru/product/' + product['slug'] + '-' + str(product['id'])
         shop = 'Ситилинк'
 
-        data = {
+        product_data = {
             'id_product': id_product,
             'name': name,
             'price': price,
@@ -52,9 +56,7 @@ def get_page_data(html):
             'url': url,
             'shop': shop,
         }
-
-        print(data)
-        data_list.append(data)
+        data_list.append(product_data)
     return data_list
 
 
@@ -98,6 +100,7 @@ def write_db(competitor_products):
 
 def citilink(url_target, page_count):
     pattern = url_target + '/?p={}'
+    product_count_on_page = 0
     for i in range(1, int(page_count) + 1):
         url = pattern.format(str(i))
         html = get_html(url)

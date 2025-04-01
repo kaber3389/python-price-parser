@@ -18,7 +18,7 @@ class CompetitorProduct(models.Model):
     categoryName = models.CharField('Категория', max_length=300, blank=True, null=True)
     vendorName = models.CharField('Производитель', max_length=300, blank=True, null=True)
     groupId = models.SlugField('ID группы', max_length=300, blank=True, null=True)
-    url = models.CharField('Ссылка', max_length=300, unique=True)
+    url = models.CharField('Ссылка', max_length=300)
     status = models.BooleanField('Статус', default=True)
     shop = models.CharField('Магазин', max_length=30, blank=True, null=True, choices=shop_choices)
     created = models.DateTimeField('Дата', auto_now_add=True, blank=True, null=True)
@@ -38,7 +38,7 @@ class MyProduct(models.Model):
     categoryId = models.SlugField('ID категории', max_length=300, blank=True, null=True)
     categoryName = models.CharField('Категория', max_length=300, blank=True, null=True)
     vendorName = models.CharField('Производитель', max_length=300, blank=True, null=True)
-    url = models.CharField('Ссылка', max_length=300, unique=True)
+    url = models.CharField('Ссылка', max_length=300)
     status = models.BooleanField('Статус', default=True)
     created = models.DateTimeField('Дата', auto_now_add=True, blank=True, null=True)
 
@@ -60,7 +60,8 @@ class Match(models.Model):
         (Wildberries, 'Wildberries'),
     )
 
-    id_product = models.IntegerField('Артикул товара', blank=True, null=True, unique=True)
+    id_product_competitor = models.IntegerField('Артикул конкурента', blank=True, null=True)
+    id_product = models.IntegerField('Артикул товара', blank=True, null=True)
     name_my = models.CharField('Товар', max_length=300, blank=True, null=True)
     price_my = models.DecimalField('Моя цена', blank=True, null=True, max_digits=10, decimal_places=2)
     shop_competitor = models.CharField('Конкурент', max_length=30, blank=True, null=True, choices=shop_choices)

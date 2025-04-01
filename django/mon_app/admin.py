@@ -3,6 +3,7 @@ from django.http import HttpResponseRedirect
 from django.urls import path
 from import_export.admin import ImportExportModelAdmin
 
+from .parsers.mvideo import mvideo
 from .models import CompetitorProduct, MyProduct, Match
 from .utils import (
     status_true_util,
@@ -11,7 +12,6 @@ from .utils import (
     start_matching_my_util,
     analyze_util,
 )
-
 
 # Действия для админки
 def status_true(modeladmin, request, queryset):
@@ -67,6 +67,13 @@ class MyProductAdmin(ImportExportModelAdmin, admin.ModelAdmin):
     list_filter = ['categoryName', 'created', 'vendorName']
     search_fields = ['name', 'id_product']
 
+def run_mvideo_parsing(modeladmin, request, queryset):
+    url_target = "https://www.mvideo.ru/smartfony-i-svyaz-4102"  # Пример URL
+    page_count = 2  # Пример количества страниц
+    mvideo(url_target, page_count)
+    modeladmin.message_user(request, f"Парсинг М.Видео завершён: {url_target}, {page_count} страниц")
+
+run_mvideo_parsing.short_description = "Запустить парсинг М.Видео"
 
 # Админка для Match
 class MatchAdmin(ImportExportModelAdmin, admin.ModelAdmin):
